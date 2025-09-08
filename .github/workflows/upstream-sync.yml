@@ -1,0 +1,41 @@
+name: Upstream Sync
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # 每天凌晨 0 点
+  workflow_dispatch: # 手动触发
+
+jobs:
+  sync_latest_from_upstream:
+    name: Sync latest commits from upstream repo
+    runs-on: ubuntu-latest
+    if: ${{ github.event.repository.fork }}
+
+    steps:
+      # 步骤 1：检出当前 fork 仓库的代码
+      - name: Checkout target repo
+        uses: actions/checkout@v3
+
+      # 步骤 2：同步上游仓库的变更
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          upstream_sync_repo: bia-pain-bache/BPB-Worker-Panel # 指定上游仓库
+          upstream_sync_branch: main # 指定上游仓库的分支
+          target_sync_branch: main # 指定 fork 仓库的分支
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # GitHub 自动生成的 Token
+
+          # 设置 test_mode 为 false，执行实际同步操作
+          test_mode: false
+
+      # 步骤 3：同步失败时的提示
+      - name: Sync check
+        if: failure()
+        run: |
+          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次，详细教程请查看项目README.md "
+          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the project README.md for instructions. "
+          exit 1
